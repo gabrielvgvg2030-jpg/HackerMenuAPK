@@ -1,41 +1,154 @@
-name: Compilar HackerMenuAPK
+
+name: Compilar APK Android
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    paths:
+      - ".github/workflows/main.yml"
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Baixar codigo
+      - name: Baixar repositorio
         uses: actions/checkout@v4
 
-      - name: Instalar Java
+      - name: Configurar Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
-      - name: Setup Android SDK
-  uses: android-actions/setup-android@v3
-  with:
-    packages: tools
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
 
-      
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: "8.9"
+
+      - name: Criar projeto Android
+        shell: bash
+        run: |
+          mkdir -p app/src/main/java/com/hackermenu/app
+          mkdir -p app/src/main
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "HackerMenu"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.hackermenu.app'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.hackermenu.app'
+                  minSdk 23
+                  targetSdk 28
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:theme="@android:style/Theme.Material.NoActionBar"
+                  android:label="Hacker Menu"
+                  android:allowBackup="false">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/hackermenu/app/MainActivity.java <<'EOF'
+          package com.hackermenu.app;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.graphics.Color;
+          import android.view.Gravity;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+
+          public class MainActivity extends Activity {
+              @Override
+              public void onCreate(Bundle state) {
+                  super.onCreate(state);
+
+                  LinearLayout layout = new LinearLayout(this);
+                  layout.setOrientation(LinearLayout.VERTICAL);
+                  layout.setGravity(Gravity.CENTER);
+                  layout.setPadding(24, 24, 24, 24);
+                  layout.setBackgroundColor(Color.rgb(18, 18, 18));
+
+                  TextView title = new TextView(this);
+                  title.setText("HACKER MENU");
+                  title.setTextSize(28);
+                  title.setTextColor(Color.GREEN);
+                  title.setGravity(Gravity.CENTER);
+
+                  TextView info = new TextView(this);
+                  info.setText("Menu vazio - pronto para personalizar");
+                  info.setTextSize(16);
+                  info.setTextColor(Color.WHITE);
+                  info.setGravity(Gravity.CENTER);
+                  info.setPadding(0, 24, 0, 0);
+
+                  layout.addView(title);
+                  layout.addView(info);
+                  setContentView(layout);
+              }
+          }
+          EOF
 
       - name: Compilar APK
-        run: gradle assembleDebug
+        run: gradle --no-daemon assembleDebug
 
-      - name: Guardar APK
+      - name: Publicar APK
         uses: actions/upload-artifact@v4
         with:
-          name: HackerMenuAPK-debug
+          name: HackerMenu-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
