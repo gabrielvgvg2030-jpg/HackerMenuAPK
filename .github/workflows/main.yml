@@ -1,5 +1,5 @@
 
-name: Compilar APK Android
+name: Compilar HackerMenuAPK
 
 on:
   workflow_dispatch:
@@ -21,17 +21,15 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-  
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Instalar pacotes Android
+        shell: bash
         run: |
-          sdkmanager "platform-tools"
-          sdkmanager "platforms;android-35"
-          sdkmanager "build-tools;35.0.0"
-
-
+          sdkmanager --install "platform-tools"
+          sdkmanager --install "platforms;android-35"
+          sdkmanager --install "build-tools;35.0.0"
 
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -42,7 +40,6 @@ jobs:
         shell: bash
         run: |
           mkdir -p app/src/main/java/com/hackermenu/app
-          mkdir -p app/src/main
 
           cat > settings.gradle <<'EOF'
           pluginManagement {
@@ -150,7 +147,7 @@ jobs:
       - name: Compilar APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Publicar APK
+      - name: Salvar APK para download
         uses: actions/upload-artifact@v4
         with:
           name: HackerMenu-APK
